@@ -1,4 +1,4 @@
-import { Component } from "react";
+import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Searchbar } from './SearchBar/SearchBar';
@@ -6,67 +6,60 @@ import { Loader } from './Loader/Loader';
 import { Button } from './Button/Button';
 import { fetchImg } from "./Api/Api";
 
-export class App extends Component {
-  state = {
-    images: [],
-    query: '',
-    page: 1,
-    isloading: false,
-  };
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [isloading, setIsLoading] = useState(false);
 
-    async componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.query !== this.state.query ||
-      prevState.page !== this.state.page
-    ) {
-      const { query, page } = this.state;
-      const elemIndex = query.indexOf('/') + 1;
-      const searchQuery  = query.slice(elemIndex, query.length);
+    useEffect(() => {
+    if (query === '') {
+      return;
+    }
+
+    async function getImages() {
+      const elemIndex  = query.indexOf('/') + 1;
+      const searchQuery = query.slice(elemIndex , query.length);
+
       try {
-        this.setState({ isloading: true });
-        const fetchedImages = await fetchImg(searchQuery , page);
-        this.setState(prevState => {
-          return { images: [...prevState.images, ...fetchedImages.data.hits] };
-        });
+        setIsLoading(true);
+        const fetchedImages = await fetchImg(searchQuery, page);
+        setImages(prevState => [...prevState, ...fetchedImages.data.hits]);
       } catch (error) {
         toast.error('Try again!');
       } finally {
-        this.setState({ isloading: false });
+        setIsLoading(false);
       }
     }
-  }
 
-    getSearchInfo = event => {
+    getImages();
+  }, [page, query]);
+
+  const getSearchInfo = event => {
     event.preventDefault();
     const form = event.currentTarget;
     const newQuery = form.elements.search.value;
     form.reset();
-    this.setState({ query: `${Date.now()}/${newQuery}`, page: 1, images: [] });
+    setQuery(`${Date.now()}/${newQuery.trim()}`);
+    setPage(1);
+    setImages([]);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => {
-      return {
-        page: prevState.page + 1,
-      };
-    });
+  const handleLoadMore = () => {
+    setPage(prevState => prevState + 1);
   };
 
-    render() {
-    const { images, isloading } = this.state;
-    return (
+  return (
       <>
-        <Searchbar onSubmit={this.getSearchInfo} />
+        <Searchbar onSubmit={getSearchInfo} />
         {isloading && <Loader />}
-        {this.state.images.length > 0 && (
+        {images.length > 0 && (
           <>
             <ImageGallery findCards={images} />
-            <Button onBtnClick={this.handleLoadMore} />
+            <Button onBtnClick={handleLoadMore} />
           </>
         )}
-        {/* <GlobalStyle /> */}
         <Toaster />
       </>
-    );
-  }
+  );
 };
